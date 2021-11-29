@@ -1,0 +1,66 @@
+
+
+Добавляем в систему пользователя, от которого будет стартовать nats…
+
+sudo adduser --system --group --no-create-home --shell /bin/false nats
+
+Перед установкой лучше посмотреть свежие версии и слить что нужно…
+
+wget https://github.com/nats-io/nats-server/releases/download/v2.3.2/nats-server-v2.3.2-amd64.deb
+dpkg -i nats-server-v2.3.2-amd64.deb
+
+Создаём файл nano /etc/systemd/system/nats.service и пишем в него:
+
+[Unit]
+Description=NATS messaging server
+
+[Service]
+ExecStart=/usr/local/bin/nats-server -a 127.0.0.1 -p 4222 -m 8222
+User=nats
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+После чего перезапускаем сервисы и включаем в работу NATS сервер
+
+systemctl daemon-reload 
+systemctl enable nats.service 
+systemctl restart nats.service
+
+Далее убеждаемся что он успешно включен и слушает на адресе и порту 127.0.0.1:4222
+
+
+----------------------------------------------------------------------------------------------------
+
+
+Все файлы слить и свалить в какую-либо директорию, поправив config.py
+
+apt install python3-pip
+pip install nats-py py7zr pymysql
+
+
+
+Make new file in /etc/systemd/system/natsbackuper.service with content:
+
+[Unit]
+Description = Mysql backups via nats
+After = network.target
+ 
+[Service]
+Type = simple
+ExecStart = /opt/nats-mysql-tables-backup/natsbackuper.py
+User = root
+Group = root
+Restart = on-failure
+SyslogIdentifier = natsbackuper
+RestartSec = 5
+TimeoutStartSec = infinity
+ 
+[Install]
+WantedBy = multi-user.target
+
+
+
+systemctl daemon-reload
+systemctl restart natsbackuper.service
