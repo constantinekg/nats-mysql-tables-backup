@@ -57,16 +57,22 @@ def makebackup(tables):
 def getBackupFileDetails(backupfile):
     filepath = config.backupdir+'/'+backupfile
     is7zarchive = py7zr.is_7zfile(filepath)
+    is7zarchiveencrypted = py7zr.SevenZipFile(filepath).needs_password()
     try:
         py7zr.SevenZipFile(filepath).test()
         iscrcok = True
     except:
         iscrcok = False
-    if is7zarchive == True and iscrcok ==True:
+    archinfo = py7zr.SevenZipFile(filepath).list()
+    emptyfiles = 0
+    for i in archinfo:
+        if i.is_directory == False and i.uncompressed == 0:
+            emptyfiles+=1
+    if is7zarchive == True and iscrcok ==True and is7zarchiveencrypted == False and emptyfiles == 0:
         filesinside = py7zr.SevenZipFile(filepath).getnames()
-        return {backupfile:','.join(str(e) for e in filesinside)}
+        return {'status':'ok',backupfile:','.join(str(e) for e in filesinside)}
     else:
-        return {backupfile:'bad'}
+        return {'status':'bad'}
 
 # restore into mysql db from sql file
 def restoreFileIntoDb(exdir,exfiles):
