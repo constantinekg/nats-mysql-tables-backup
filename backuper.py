@@ -10,6 +10,7 @@ import py7zr
 import shutil
 from threading import Thread
 import json
+from pathlib import Path
 
 # Function for make 7z file
 def compressSqlFiles(sqlfiles, archivename, tempdir):
@@ -56,21 +57,24 @@ def makebackup(tables):
 # get detalisation of archive - it's name & files which inside of
 def getBackupFileDetails(backupfile):
     filepath = config.backupdir+'/'+backupfile
-    is7zarchive = py7zr.is_7zfile(filepath)
-    is7zarchiveencrypted = py7zr.SevenZipFile(filepath).needs_password()
-    try:
-        py7zr.SevenZipFile(filepath).test()
-        iscrcok = True
-    except:
-        iscrcok = False
-    archinfo = py7zr.SevenZipFile(filepath).list()
-    emptyfiles = 0
-    for i in archinfo:
-        if i.is_directory == False and i.uncompressed == 0:
-            emptyfiles+=1
-    if is7zarchive == True and iscrcok ==True and is7zarchiveencrypted == False and emptyfiles == 0:
-        filesinside = py7zr.SevenZipFile(filepath).getnames()
-        return {'status':'ok',backupfile:','.join(str(e) for e in filesinside)}
+    if Path(filepath).exists():
+        is7zarchive = py7zr.is_7zfile(filepath)
+        is7zarchiveencrypted = py7zr.SevenZipFile(filepath).needs_password()
+        try:
+            py7zr.SevenZipFile(filepath).test()
+            iscrcok = True
+        except:
+            iscrcok = False
+        archinfo = py7zr.SevenZipFile(filepath).list()
+        emptyfiles = 0
+        for i in archinfo:
+            if i.is_directory == False and i.uncompressed == 0:
+                emptyfiles+=1
+        if is7zarchive == True and iscrcok ==True and is7zarchiveencrypted == False and emptyfiles == 0:
+            filesinside = py7zr.SevenZipFile(filepath).getnames()
+            return {'status':'ok','tables':','.join(str(e) for e in filesinside)}
+        else:
+            return {'status':'bad'}
     else:
         return {'status':'bad'}
 
