@@ -80,7 +80,7 @@ nc.request("backup.archive", 'archive'.encode(), headers={'archivename':'2021-11
 ```
 ./nats-req backup.archive "archivename=2021-11-28_20-30-39-backup.7z"
 Published [backup.archive] : 'archivename=2021-11-28_20-30-39-backup.7z'
-Received  [_INBOX.RJtuKZcqC65JAEWy8gMV6A.RQ5cYzMA] : '{"2021-11-28_20-30-39-backup.7z": "table1.sql,table2.sql,table3.sql"}'
+Received  [_INBOX.RJtuKZcqC65JAEWy8gMV6A.RQ5cYzMA] : '{"tables": "table1.sql,table2.sql,table3.sql"}'
 ```
 
 В случае если архив невозможно прочитать (его не существует, он повреждён или он не является 7z архивом) будет возвращено:
