@@ -31,10 +31,8 @@ def proceedbackup(tables):
         tempdir = config.backupdir+'/'+timestamp+'/'
         os.makedirs(tempdir)
         for table in tables:
-            with open(tempdir+table+'.sql', "w+") as stdout:
-                cmdline = ['mysqldump','-h',config.mysql_host,'-u'+config.mysql_db_user,'-p'+config.mysql_db_password, config.mysql_db_name,table]
-                p1 = subprocess.Popen(cmdline, stdout=subprocess.PIPE)
-                p2 = subprocess.Popen('cat', stdin=p1.stdout, stdout=stdout)
+            dumpcmd = "mysqldump -h "+config.mysql_host+" -u"+config.mysql_db_user+" -p"+config.mysql_db_password+" "+config.mysql_db_name+" "+table+" > "+tempdir+table+".sql"
+            os.system(dumpcmd)
         sqlfiles = ' '.join(str(e+'.sql') for e in tables)
         Thread(target=compressSqlFiles, args=(sqlfiles, filearchivename, tempdir,)).start() # run compression in separate thread and don't wait and return future file name as soon as posible
         return filearchivename
@@ -56,8 +54,8 @@ def makebackup(tables):
 
 # get detalisation of archive - it's name & files which inside of
 def getBackupFileDetails(backupfile):
-    filepath = config.backupdir+'/'+backupfile
-    if Path(filepath).exists():
+    filepath = config.backupdir+'/'+backupfile.replace('archivename=', '')
+    if os.path.isfile(filepath) == True:
         is7zarchive = py7zr.is_7zfile(filepath)
         is7zarchiveencrypted = py7zr.SevenZipFile(filepath).needs_password()
         try:
@@ -74,8 +72,10 @@ def getBackupFileDetails(backupfile):
             filesinside = py7zr.SevenZipFile(filepath).getnames()
             return {'status':'ok','tables':','.join(str(e) for e in filesinside)}
         else:
+            print ('File corrupted')
             return {'status':'bad'}
     else:
+        print ('File not exists - ' + filepath)
         return {'status':'bad'}
 
 # restore into mysql db from sql file
@@ -86,6 +86,7 @@ def restoreFileIntoDb(exdir,exfiles):
             command = ['mysql', '-h%s' % config.mysql_host ,'-u%s' % config.mysql_db_user, '-p%s' % config.mysql_db_password, config.mysql_db_name]
             proc = subprocess.Popen(command, stdin = f)
             stdout, stderr = proc.communicate()
+            print (stderr)
     shutil.rmtree(exdir)
 
 
@@ -93,10 +94,12 @@ def restoreFileIntoDb(exdir,exfiles):
 def extractBackupArchive(backuparchivename, files):
     global extractfiles
     extractfiles = files.split(',')
-    extractarchive = config.backupdir+'/'+backuparchivename
+    extractarchive = config.backupdir+'/'+backuparchivename.replace('archivename=', '')
     isok = getBackupFileDetails(backuparchivename)
-    if isok[backuparchivename] != 'bad':
-        isfilesinarchive = set(files.split(',')).issubset(set(isok[backuparchivename].split(',')))
+    # print (extractarchive)
+    # print ('^^^^^^^^^^')
+    if isok['status'] != 'bad':
+        isfilesinarchive = set(files.split(',')).issubset(set(isok['tables'].split(',')))
         if isfilesinarchive == True:
             print('Making extraction of files...')
             extractdir = config.tmpextractdir+'/'+backuparchivename.replace('.7z', '')+'/'
@@ -114,7 +117,9 @@ def extractBackupArchive(backuparchivename, files):
                 # restoreFileIntoDb(extractdir,extractfiles)
                 # for exfile in files.split(','):
                     # global exfile
-                Thread(target=restoreFileIntoDb,args=(extractdir,extractfiles)).start()
+                thr = Thread(target=restoreFileIntoDb,args=(extractdir,extractfiles,),daemon=True)
+                thr.start()
+                thr.join()
                     # restoreFileIntoDb(extractdir+exfile)
                 return True
         else:
@@ -124,11 +129,3 @@ def extractBackupArchive(backuparchivename, files):
         print ('probably backup archive is corrupted')
         return {backuparchivename:'bad'}
 
-
-# files4extract = 'table1.sql,table2.sql,table3.sql'
-# res = extractBackupArchive('2021-11-28_23-49-44-backup.7z',files4extract)
-# print(res)
-
-# a = [1,2,3]
-# b = [3,1]
-# print (set(b).issubset(a))
