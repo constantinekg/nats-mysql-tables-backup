@@ -31,7 +31,7 @@ def proceedbackup(tables):
         tempdir = config.backupdir+'/'+timestamp+'/'
         os.makedirs(tempdir)
         for table in tables:
-            dumpcmd = "mysqldump -h "+config.mysql_host+" -u"+config.mysql_db_user+" -p"+config.mysql_db_password+" "+config.mysql_db_name+" "+table+" > "+tempdir+table+".sql"
+            dumpcmd = "mysqldump -h "+config.mysql_host+" -u"+config.mysql_db_user+" -p"+config.mysql_db_password+" --column-statistics=0 --no-tablespaces "+config.mysql_db_name+" "+table+" > "+tempdir+table+".sql"
             os.system(dumpcmd)
         sqlfiles = ' '.join(str(e+'.sql') for e in tables)
         Thread(target=compressSqlFiles, args=(sqlfiles, filearchivename, tempdir,)).start() # run compression in separate thread and don't wait and return future file name as soon as posible
@@ -129,3 +129,11 @@ def extractBackupArchive(backuparchivename, files):
         print ('probably backup archive is corrupted')
         return {backuparchivename:'bad'}
 
+
+# files4extract = 'table1.sql,table2.sql,table3.sql'
+# res = extractBackupArchive('2021-11-28_23-49-44-backup.7z',files4extract)
+# print(res)
+
+# a = [1,2,3]
+# b = [3,1]
+# print (set(b).issubset(a))
